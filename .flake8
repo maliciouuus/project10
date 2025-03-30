@@ -1,0 +1,26 @@
+[flake8]
+max-line-length = 79
+exclude = 
+    */migrations/*,
+    venv/*,
+    env/*,
+    .git/*,
+    __pycache__/*
+per-file-ignores =
+    # Settings files can have long lines
+    */settings.py:E501
+    # Allow __init__ files to have unused imports
+    */__init__.py:F401
+    # Ignore trailing whitespace in serializers docstrings
+    */serializers.py:W291
+    # Ignore long lines in docstrings
+    projects/authentication.py:E501
+    projects/middleware.py:E501
+    projects/permissions.py:E501
+    projects/views.py:E501
+    users/serializers.py:E501
+    softdesk/urls.py:E501
+# Compatibilité avec Black
+extend-ignore = E203, W503
+# E203: whitespace before ':' (conflict avec Black)
+# W503: line break before binary operator (conflict avec Black) 
