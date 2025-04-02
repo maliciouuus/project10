@@ -27,7 +27,35 @@ from .serializers import (
 )
 
 
-class ProjectViewSet(viewsets.ModelViewSet):
+class JWTViewSet(viewsets.ModelViewSet):
+    """Classe de base pour tous les ViewSets nécessitant une authentification JWT.
+    
+    Cette classe implémente la vérification commune d'authentification JWT
+    pour éviter la duplication de code à travers les différents ViewSets.
+    """
+    
+    authentication_classes = [JWTAuthentication]
+    
+    def initial(self, request, *args, **kwargs):
+        """Vérifie l'authentification JWT avant de traiter la requête."""
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header:
+            msg = "Les informations d'authentification n'ont pas été fournies."
+            raise AuthenticationFailed(msg)
+
+        if not auth_header.startswith("Bearer "):
+            msg = "Format de jeton d'authentification invalide."
+            raise AuthenticationFailed(msg)
+
+        token = auth_header.split(" ")[1]
+
+        if not token or token == "invalid_token":
+            raise AuthenticationFailed("Jeton invalide.")
+
+        super().initial(request, *args, **kwargs)
+
+
+class ProjectViewSet(JWTViewSet):
     """ViewSet pour gérer les opérations sur les projets.
 
     Ce ViewSet fournit les opérations CRUD pour les projets et garantit que
@@ -35,11 +63,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
     auxquels ils contribuent.
 
     Attributes:
-        authentication_classes: Utilise l'authentification JWT
         permission_classes: Nécessite une authentification
     """
 
-    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -61,37 +87,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
             user=self.request.user, project=project, role="AUTHOR"
         )
 
-    def initial(self, request, *args, **kwargs):
-        """Vérifie l'authentification JWT avant de traiter la requête."""
-        auth_header = request.headers.get("Authorization", "")
-        if not auth_header:
-            msg = "Les informations d'authentification n'ont pas été fournies."
-            raise AuthenticationFailed(msg)
 
-        if not auth_header.startswith("Bearer "):
-            msg = "Format de jeton d'authentification invalide."
-            raise AuthenticationFailed(msg)
-
-        token = auth_header.split(" ")[1]
-
-        if not token or token == "invalid_token":
-            raise AuthenticationFailed("Jeton invalide.")
-
-        super().initial(request, *args, **kwargs)
-
-
-class ContributorViewSet(viewsets.ModelViewSet):
+class ContributorViewSet(JWTViewSet):
     """ViewSet pour gérer les contributeurs des projets.
 
     Gère l'ajout, la suppression et la liste des contributeurs pour un projet spécifique.
     Seuls les contributeurs du projet peuvent gérer d'autres contributeurs.
 
     Attributes:
-        authentication_classes: Utilise l'authentification JWT
         permission_classes: Nécessite une authentification et le statut de contributeur
     """
 
-    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated, IsProjectContributor]
 
     def get_serializer_class(self):
@@ -163,26 +169,8 @@ class ContributorViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-    def initial(self, request, *args, **kwargs):
-        """Vérifie l'authentification JWT avant de traiter la requête."""
-        auth_header = request.headers.get("Authorization", "")
-        if not auth_header:
-            msg = "Les informations d'authentification n'ont pas été fournies."
-            raise AuthenticationFailed(msg)
 
-        if not auth_header.startswith("Bearer "):
-            msg = "Format de jeton d'authentification invalide."
-            raise AuthenticationFailed(msg)
-
-        token = auth_header.split(" ")[1]
-
-        if not token or token == "invalid_token":
-            raise AuthenticationFailed("Jeton invalide.")
-
-        super().initial(request, *args, **kwargs)
-
-
-class IssueViewSet(viewsets.ModelViewSet):
+class IssueViewSet(JWTViewSet):
     """ViewSet pour gérer les problèmes des projets.
 
     Gère la création, la mise à jour et la liste des problèmes pour un projet spécifique.
@@ -190,11 +178,9 @@ class IssueViewSet(viewsets.ModelViewSet):
     peuvent les modifier.
 
     Attributes:
-        authentication_classes: Utilise l'authentification JWT
         permission_classes: Nécessite authentification, accès au projet et propriété
     """
 
-    authentication_classes = [JWTAuthentication]
     permission_classes = [
         IsAuthenticated,
         IsProjectContributor,
@@ -216,26 +202,8 @@ class IssueViewSet(viewsets.ModelViewSet):
         project = get_object_or_404(Project, pk=self.kwargs["project_pk"])
         serializer.save(project=project, author=self.request.user)
 
-    def initial(self, request, *args, **kwargs):
-        """Vérifie l'authentification JWT avant de traiter la requête."""
-        auth_header = request.headers.get("Authorization", "")
-        if not auth_header:
-            msg = "Les informations d'authentification n'ont pas été fournies."
-            raise AuthenticationFailed(msg)
 
-        if not auth_header.startswith("Bearer "):
-            msg = "Format de jeton d'authentification invalide."
-            raise AuthenticationFailed(msg)
-
-        token = auth_header.split(" ")[1]
-
-        if not token or token == "invalid_token":
-            raise AuthenticationFailed("Jeton invalide.")
-
-        super().initial(request, *args, **kwargs)
-
-
-class CommentViewSet(viewsets.ModelViewSet):
+class CommentViewSet(JWTViewSet):
     """ViewSet pour gérer les commentaires sur les problèmes.
 
     Gère la création, la mise à jour et la liste des commentaires pour un problème spécifique.
@@ -243,11 +211,9 @@ class CommentViewSet(viewsets.ModelViewSet):
     modifier leurs commentaires.
 
     Attributes:
-        authentication_classes: Utilise l'authentification JWT
         permission_classes: Nécessite authentification, accès au projet et propriété
     """
 
-    authentication_classes = [JWTAuthentication]
     permission_classes = [
         IsAuthenticated,
         IsProjectContributor,
@@ -280,21 +246,3 @@ class CommentViewSet(viewsets.ModelViewSet):
             )
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-    def initial(self, request, *args, **kwargs):
-        """Vérifie l'authentification JWT avant de traiter la requête."""
-        auth_header = request.headers.get("Authorization", "")
-        if not auth_header:
-            msg = "Les informations d'authentification n'ont pas été fournies."
-            raise AuthenticationFailed(msg)
-
-        if not auth_header.startswith("Bearer "):
-            msg = "Format de jeton d'authentification invalide."
-            raise AuthenticationFailed(msg)
-
-        token = auth_header.split(" ")[1]
-
-        if not token or token == "invalid_token":
-            raise AuthenticationFailed("Jeton invalide.")
-
-        super().initial(request, *args, **kwargs)
