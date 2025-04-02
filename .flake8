@@ -20,6 +20,8 @@ per-file-ignores =
     projects/views.py:E501
     users/serializers.py:E501
     softdesk/urls.py:E501
+    # Ignorer les lignes trop longues dans le panel utilisateur
+    softdesk_api_panel.py:E501,F401
 # Compatibilité avec Black
 extend-ignore = E203, W503
 # E203: whitespace before ':' (conflict avec Black)
