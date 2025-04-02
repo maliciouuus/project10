@@ -22,7 +22,6 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
-    TokenRefreshView,
 )
 
 # Configuration de la documentation de l'API avec Swagger/OpenAPI
@@ -45,9 +44,6 @@ urlpatterns = [
     # URLs d'authentification JWT
     path(
         "api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"
-    ),
-    path(
-        "api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"
     ),
     # URLs de l'API
     path("api/", include("projects.urls")),  # Routes de gestion de projets

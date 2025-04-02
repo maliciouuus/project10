@@ -14,6 +14,7 @@ Ce module contient tous les sérialiseurs pour l'application projects:
 """
 
 from rest_framework import serializers
+import django.contrib.auth
 
 from users.serializers import UserSerializer
 from .models import Project, Contributor, Issue, Comment
@@ -118,6 +119,26 @@ class ContributorSerializer(serializers.ModelSerializer):
         model = Contributor
         fields = ("id", "user", "project", "role", "created_time")
         read_only_fields = ("created_time",)
+
+
+class ContributorCreateSerializer(serializers.ModelSerializer):
+    """Sérialiseur pour la création de contributeurs.
+
+    Version simplifiée du ContributorSerializer où les champs project et user
+    sont gérés dans le perform_create du ViewSet. Ce sérialiseur ne s'attend
+    à recevoir que l'ID de l'utilisateur à ajouter comme contributeur.
+    """
+
+    user = serializers.PrimaryKeyRelatedField(
+        queryset=django.contrib.auth.get_user_model().objects.all()
+    )
+
+    class Meta:
+        """Options Meta pour ContributorCreateSerializer."""
+
+        model = Contributor
+        fields = ("user", "project", "role")
+        read_only_fields = ("project", "role")
 
 
 class IssueListSerializer(serializers.ModelSerializer):

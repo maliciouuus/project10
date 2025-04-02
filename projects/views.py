@@ -12,14 +12,15 @@ from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .models import Project, Contributor, Issue, Comment
 from .permissions import IsProjectContributor, IsAuthorOrReadOnly
-from .authentication import CustomJWTAuthentication
 from .serializers import (
     ProjectListSerializer,
     ProjectDetailSerializer,
     ContributorSerializer,
+    ContributorCreateSerializer,
     IssueListSerializer,
     IssueDetailSerializer,
     CommentSerializer,
@@ -38,7 +39,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         permission_classes: Nécessite une authentification
     """
 
-    authentication_classes = [CustomJWTAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -90,9 +91,14 @@ class ContributorViewSet(viewsets.ModelViewSet):
         permission_classes: Nécessite une authentification et le statut de contributeur
     """
 
-    authentication_classes = [CustomJWTAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated, IsProjectContributor]
-    serializer_class = ContributorSerializer
+
+    def get_serializer_class(self):
+        """Retourne le sérialiseur approprié selon l'action."""
+        if self.action == "create":
+            return ContributorCreateSerializer
+        return ContributorSerializer
 
     def get_queryset(self):
         """Obtient tous les contributeurs pour un projet spécifique."""
@@ -101,9 +107,61 @@ class ContributorViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Ajoute un nouveau contributeur au projet."""
         project = get_object_or_404(Project, pk=self.kwargs["project_pk"])
+
+        # Vérifier si l'utilisateur actuel est autorisé à ajouter des contributeurs
         if not project.contributors.filter(user=self.request.user).exists():
-            return Response(status=status.HTTP_403_FORBIDDEN)
-        serializer.save(project=project)
+            return Response(
+                {
+                    "detail": "Vous n'êtes pas autorisé à ajouter des contributeurs à ce projet."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Récupérer l'utilisateur à ajouter comme contributeur
+        try:
+            user_id = self.request.data.get("user")
+            if not user_id:
+                return Response(
+                    {"detail": "L'ID de l'utilisateur à ajouter est requis."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            from django.contrib.auth import get_user_model
+
+            User = get_user_model()
+            user = get_object_or_404(User, pk=user_id)
+
+            # Vérifier si l'utilisateur est déjà contributeur
+            if project.contributors.filter(user=user).exists():
+                return Response(
+                    {
+                        "detail": "L'utilisateur est déjà contributeur de ce projet."
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+            # Créer le contributeur
+            contributor = serializer.save(
+                project=project, user=user, role="CONTRIBUTOR"
+            )
+
+            # Retourner une réponse appropriée
+            return Response(
+                ContributorSerializer(contributor).data,
+                status=status.HTTP_201_CREATED,
+            )
+
+        except Exception as e:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Erreur lors de l'ajout d'un contributeur: {str(e)}")
+            return Response(
+                {
+                    "detail": f"Erreur lors de l'ajout du contributeur: {str(e)}"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     def initial(self, request, *args, **kwargs):
         """Vérifie l'authentification JWT avant de traiter la requête."""
@@ -136,7 +194,7 @@ class IssueViewSet(viewsets.ModelViewSet):
         permission_classes: Nécessite authentification, accès au projet et propriété
     """
 
-    authentication_classes = [CustomJWTAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [
         IsAuthenticated,
         IsProjectContributor,
@@ -189,7 +247,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         permission_classes: Nécessite authentification, accès au projet et propriété
     """
 
-    authentication_classes = [CustomJWTAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [
         IsAuthenticated,
         IsProjectContributor,

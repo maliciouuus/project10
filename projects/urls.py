@@ -15,6 +15,7 @@ La structure des URLs suit ce modèle:
 from django.urls import path, include
 from rest_framework_nested import routers
 from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .views import (
     ProjectViewSet,
@@ -22,11 +23,10 @@ from .views import (
     IssueViewSet,
     CommentViewSet,
 )
-from .authentication import CustomJWTAuthentication
 
 # Configuration par défaut pour tous les routeurs
 router_config = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [CustomJWTAuthentication],
+    "DEFAULT_AUTHENTICATION_CLASSES": [JWTAuthentication],
     "DEFAULT_PERMISSION_CLASSES": [IsAuthenticated],
 }
 
